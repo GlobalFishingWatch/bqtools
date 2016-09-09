@@ -28,6 +28,7 @@ complexity.
 
 
 """
+from __future__ import unicode_literals, print_function, division
 import uuid
 import time
 import subprocess
@@ -134,17 +135,24 @@ class BigQuery:
 
         Returns
         -------
-        True | False
+        True | False | None
+
+        None is returned if there is an error in the initial query.
 
         """
         request = self._bq.jobs().get(
             projectId=job['jobReference']['projectId'],
             jobId=job['jobReference']['jobId'])
-        result = request.execute(num_retries=2)
+        try:
+            result = request.execute(num_retries=2)
+        except:
+            return None
         #
         if result['status']['state'] == 'DONE':
             if 'errorResult' in result['status']:
-                raise RuntimeError(result['status']['errorResult'])
+                err = result['status']['errorResult']
+                text = "{reason}: {message}".format(**err)
+                raise RuntimeError(text)
             else:
                 return True
         else:
@@ -166,11 +174,8 @@ class BigQuery:
         """
         trial = 0
         while trial < max_tries:
-            try:
-                if self.is_done(job):
-                    return
-            except:
-                pass
+            if self.is_done(job):
+                return
             time.sleep(1)
             trial += 1
         raise RuntimeError("timeout")

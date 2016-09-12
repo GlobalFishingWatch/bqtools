@@ -4,6 +4,7 @@ downloading via gsutil.
 
 Here's the most basic way to use it:
 
+bigq = BiqQuery()
 query_job = bigq.async_query(proj_id, query, dataset, table)
 bigq.poll_job(query_job)
 extract_job = bigq.async_extract_query(query_job, gcs_path)
@@ -172,12 +173,10 @@ class BigQuery:
             is 4000 or a little over an hour.
 
         """
-        trial = 0
-        while trial < max_tries:
+        for trial in range(max_tries):
             if self.is_done(job):
                 return
             time.sleep(1)
-            trial += 1
         raise RuntimeError("timeout")
 
 

@@ -35,6 +35,7 @@ import time
 import subprocess
 from googleapiclient import discovery
 from oauth2client.client import GoogleCredentials
+import logging
 
 
 __version__ = '0.1'
@@ -285,7 +286,7 @@ class BigQuery:
         self.poll_job(extract_job)
 
 
-    def parallel_query_and_extract(self, descrs):
+    def parallel_query_and_extract(self, descrs, startup_time=60.0):
         """Perform parallel queries, yielding gcs paths as extracted
 
         Parameters
@@ -293,6 +294,10 @@ class BigQuery:
 
         descrs: sequencs of dicts
             dicts contain kwargs suitable for passing to `query_and_extract`
+        startup_time: float
+            seconds to wait before disallowing None as response to is_done.
+            This gives a chance for jobs to be started before forcing is_done
+            to return True / False
 
         Returns
         -------
@@ -319,7 +324,7 @@ class BigQuery:
 
         """
         query_jobs = []
-        for dmap in descrs:
+        for i, dmap in enumerate(descrs):
             temp_dest = dmap.get('temp_dest', None)
             dataset, table = self._extract_table_params(temp_dest)
             query_jobs.append(
@@ -328,30 +333,43 @@ class BigQuery:
                                  table=table,
                                  allow_large_results=bool(temp_dest),
                                  overwrite=bool(temp_dest),
+                                 batch=dmap.get('batch', False),
                                  num_retries=dmap.get('num_retries', 5)),
-                 dmap))
+                 dmap, i+1))
         extract_jobs = []
+        t0 = time.clock()
         while query_jobs or extract_jobs:
             time.sleep(0.1)
             new_query_jobs = []
-            for job, dmap in query_jobs:
-                if self.is_done(job):
+            for job, dmap, num in query_jobs:
+                # Check for errors. If there is an error don't put this job
+                # back on the stack
+                try:
+                    is_done = self.is_done(job)
+                except RuntimeError as err:
+                    logging.error("error in job #{}: {}".format(num, err))
+                    continue
+                if is_done is None and time.clock() - t0 > startup_time:
+                    logging.error("job #{} hanging: terminated".format(num))
+                    continue
+                #
+                if is_done:
                     extract_jobs.append(
                         (self.async_extract_query(job, dmap['path'],
                                                format=dmap.get('format', "CSV"),
                                                compression=dmap.get('compression', "GZIP"),
                                                num_retries=dmap.get('num_retries', 5)),
-                         dmap))
+                         dmap, num))
                 else:
-                    new_query_jobs.append((job, dmap))
+                    new_query_jobs.append((job, dmap, num))
             query_jobs = new_query_jobs
             #
             new_extract_jobs = []
-            for job, dmap in extract_jobs:
+            for job, dmap, num in extract_jobs:
                 if self.is_done(job):
                     yield dmap['path']
                 else:
-                    new_extract_jobs.append((job, dmap))
+                    new_extract_jobs.append((job, dmap, num))
             extract_jobs = new_extract_jobs
 
 

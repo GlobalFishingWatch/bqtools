@@ -35,6 +35,15 @@ Example Usage:
     vessel_info
     voyages
 
+You can use the `-r` flag to disable combining shards, and 
+basic globbing is supports. So, we can figure out what is going
+on with `spatial_measures`.
+
+    $ python list_tables.py -r pipe_production_v20190502.spatial_measures*
+    spatial_measures_20181025
+
+Looks like it doesn't conform to our usual `_Vyyyymmdd` method of versioning.
+
 """
 import argparse
 from collections import Counter
@@ -82,18 +91,18 @@ def list(names):
             yield "{}[{}]".format(name, count)
 
 
-def list_datasets():
+def list_datasets(args):
     command = ['bq', 'ls', '-n', str(args.max_tables_to_match)]
     raw_output = subprocess.check_output(command).decode('utf8')
     for line in raw_output.strip().split('\n')[2:]:
         dataset = line.strip()
         print(dataset)
 
-def list_tables(pattern):
-    if '.' in pattern:
-        dataset, table_pattern = pattern.split('.')
+def list_tables(args):
+    if '.' in args.pattern:
+        dataset, table_pattern = args.pattern.split('.')
     else:
-        dataset = pattern
+        dataset = args.pattern
         table_pattern = '*'
     command = ['bq', 'ls', '-n', str(args.max_tables_to_match), dataset]
     try:
@@ -108,7 +117,9 @@ def list_tables(pattern):
         for x in raw_output.strip().split('\n')[2:] if x.split()[1].endswith('TABLE')]
     tables = fnmatch.filter(all_tables, table_pattern)
 
-    for x in list(tables):
+    if not args.raw:
+        tables = list(tables)
+    for x in tables:
         print(x)
 
 
@@ -116,14 +127,16 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("pattern", nargs='?', default=None,
                         help="table name to list (supports wildcards)")
+    parser.add_argument("-r", "--raw", action='store_true',
+                        help="Don't combine date sharded tables") 
     parser.add_argument("-N", "--max_tables_to_match", 
-                        help="maximum number of tables to match and delete",
+                        help="maximum number of tables to list (includes individual shards)",
                         default=1000000) 
     args = parser.parse_args()
     if args.pattern is None:
-        list_datasets()
+        list_datasets(args)
         sys.exit()
     else:
-        list_tables(args.pattern)
+        list_tables(args)
 
 

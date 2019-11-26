@@ -1,5 +1,6 @@
 """
-Example Usage:
+Example Usage
+-------------
 
     $ python list_tables.py pipe_production_v20190502
     classify_logistic_[2883]
@@ -43,6 +44,12 @@ on with `spatial_measures`.
     spatial_measures_20181025
 
 Looks like it doesn't conform to our usual `_Vyyyymmdd` method of versioning.
+
+
+Caveats
+-------
+
+Annoyingly slow.
 
 """
 import argparse

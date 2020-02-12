@@ -117,7 +117,7 @@ def list_tables(args):
     except subprocess.CalledProcessError as err:
         if err.returncode == 2:
             print("{}: {}: No such dataset or table".format(
-                    sys.argv[0], pattern))
+                    sys.argv[0], args.pattern))
             sys.exit(2)
         raise err
     all_tables = [x.strip().split()[0] 

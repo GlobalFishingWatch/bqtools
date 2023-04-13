@@ -1,7 +1,7 @@
 """
 Example Usage:
 
-    $ python delete_tables.py machine_learning_dev_ttl_30d.test_dataflow_2016_01_01_current2*
+    $ python delete_tables.py "machine_learning_dev_ttl_30d.test_dataflow_2016_01_01_current2*"
     Found the following matching tables:
     test_dataflow_2016_01_01_current20120101
     test_dataflow_2016_01_01_current20120102

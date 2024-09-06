@@ -2,7 +2,7 @@
 Example Usage
 -------------
 
-    $ python copy_tables.py 'machine_learning_dev_ttl_120d.vc_v20200124_results_*' gfw_research_precursors
+    $ python copy_tables.py 'machine_learning_dev_ttl_120d.vc_v20200124_results_*' 0_ttl24h
 
 This copies all tables that match the given wildcard to `0_ttl24h` dataset.
  

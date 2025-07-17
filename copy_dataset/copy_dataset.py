@@ -6,6 +6,7 @@ import argparse
 import logging
 import sys
 import typing
+from google.api_core.exceptions import Conflict
 from google.cloud import bigquery
 from google.cloud.bigquery.job import QueryJobConfig, CopyJobConfig
 
@@ -57,23 +58,35 @@ def get_tables(client, job_config, dataset) -> typing.Tuple:
     logger.info(f"List tables from dataset {dataset} <Tables: {len(table_result)}, Not-tables: {len(not_table_result)}>")
     return table_result, not_table_result
 
-# from multiprocessing.pool import ThreadPool
-# def run_commands_in_parallel(jobs, max_threads=32):
-#     n_threads = min(max_threads, len(jobs))
-#     pool = ThreadPool(n_threads)
-#     pool.map(lambda job: job.result(), jobs)
-#     pool.close()
+from multiprocessing.pool import ThreadPool
+def run_commands_in_parallel(jobs, callback, max_threads=32):
+    n_threads = min(max_threads, len(jobs))
+    pool = ThreadPool(n_threads)
+    pool.map(callback, jobs)
+    pool.close()
+
+
+def trigger_job(job):
+    try:
+        job.result()
+    except Conflict as conf:
+        logger.warning(f"It already exists is ok. {conf}")
+
 
 def copy_tables(client, tables, source, dest):
+    jobs=[]
     for full_table_id in tables:
         dest_table = f"{dest}.{full_table_id.split('.')[1]}"
+        # copy requires src= ["your-project.your_dataset.your_table_name", ...], dest= "your-project.your_dataset.your_table_name"
         job = client.copy_table(
-            full_table_id
-            dest_table,
+            full_table_id.replace(":","."),
+            dest_table.replace(":","."),
             job_config=CopyJobConfig(create_disposition="CREATE_IF_NEEDED")
         )
-        job.result()
-        logger.info(f"= SINGLE TABLE COPIED {full_table_id} -> {dest_table}")
+        # job.result()
+        jobs.append(job)
+        logger.info(f"= SINGLE TABLE SCHED {full_table_id} -> {dest_table}")
+    run_commands_in_parallel(jobs, trigger_job)
 
 
 def list_not_tables(items):
@@ -132,11 +145,15 @@ def cli(args):
     return run(args)
 
 def main():
+    log_format = "%(levelname)s %(asctime)s - %(message)s"
     logging.basicConfig(
-        # filename='copy_dataset.log',
+        filename='copy_dataset.log',
         level=logging.INFO,
-        format="%(levelname)s %(asctime)s - %(message)s"
+        format=log_format
     )
+    console = logging.StreamHandler(sys.stdout)
+    console.setFormatter(logging.Formatter(log_format))
+    logging.getLogger().addHandler(console)
     logger.info('Started')
     r = cli(sys.argv[1:])
     logger.info('Finished')

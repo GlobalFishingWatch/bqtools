@@ -67,12 +67,12 @@ def get_tables(client, job_config, dataset) -> typing.Tuple:
 def copy_tables(client, tables, source, dest):
     for full_table_id in tables:
         dest_table = f"{dest}.{full_table_id.split('.')[1]}"
-        # job = client.copy_table(
-        #     full_table_id
-        #     dest_table,
-        #     job_config=CopyJobConfig(create_disposition="CREATE_IF_NEEDED")
-        # )
-        # job.result()
+        job = client.copy_table(
+            full_table_id
+            dest_table,
+            job_config=CopyJobConfig(create_disposition="CREATE_IF_NEEDED")
+        )
+        job.result()
         logger.info(f"= SINGLE TABLE COPIED {full_table_id} -> {dest_table}")
 
 

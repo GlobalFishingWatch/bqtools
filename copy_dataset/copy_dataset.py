@@ -2,6 +2,12 @@
 # Then it gets the tables that the dataset has.
 # Then it runs the copy in a separate project
 # Then compares the amoun of Gb between the source and destination dataset.
+# Usage:
+#   python copy_dataset.py \
+#     -ip "world-fishing-827" -i "VMS_Brazil"
+#     -op "gfw-int-vms-sources" -i "VMS_BRA"
+#
+
 import argparse
 import logging
 import sys
@@ -9,6 +15,7 @@ import typing
 from google.api_core.exceptions import Conflict
 from google.cloud import bigquery
 from google.cloud.bigquery.job import QueryJobConfig, CopyJobConfig
+from multiprocessing.pool import ThreadPool
 
 
 logger = logging.getLogger(__name__)
@@ -26,16 +33,14 @@ regexp_replace(table_id, "{pattern}", "*"), table_id) as table_name from
 `{args.source_dataset}.__TABLES__` group by 1"""
 
 
-
 def get_costs(client, job_config, dataset):
     query = COSTS_QUERY.format(dataset=dataset)
     result = client.query_and_wait(query, job_config=job_config)
-    size=0
+    size = 0
     for r in result:
-        size = r.get('total_bytes','NOT-KEY')
+        size = r.get("total_bytes", "NOT-KEY")
         logger.info(list(r.items()))
     return size
-
 
 
 def present_tables(client, job_config, args):
@@ -47,18 +52,19 @@ def present_tables(client, job_config, args):
 
 
 def get_tables(client, job_config, dataset) -> typing.Tuple:
-    table_result=[]
-    not_table_result=[]
+    table_result = []
+    not_table_result = []
     items = client.list_tables(dataset=dataset)
     for t in items:
         if t.table_type == "TABLE":
             table_result.append(t.full_table_id)
         else:
             not_table_result.append(t.full_table_id)
-    logger.info(f"List tables from dataset {dataset} <Tables: {len(table_result)}, Not-tables: {len(not_table_result)}>")
+    logger.info(f"List tables from dataset {dataset} <Tables: {len(table_result)}, "
+                f"Not-tables: {len(not_table_result)}>")
     return table_result, not_table_result
 
-from multiprocessing.pool import ThreadPool
+
 def run_commands_in_parallel(jobs, callback, max_threads=32):
     n_threads = min(max_threads, len(jobs))
     pool = ThreadPool(n_threads)
@@ -74,24 +80,26 @@ def trigger_job(job):
 
 
 def copy_tables(client, tables, source, dest):
-    jobs=[]
-    for full_table_id in tables:
-        dest_table = f"{dest}.{full_table_id.split('.')[1]}"
-        # copy requires src= ["your-project.your_dataset.your_table_name", ...], dest= "your-project.your_dataset.your_table_name"
+    jobs = []
+    for table_id in tables:
+        src_table = f"{source}.{table_id}"
+        dest_table = f"{dest}.{table_id}"
+        # copy requires src= ["your-project.your_dataset.your_table_name",
+        # ...], dest= "your-project.your_dataset.your_table_name"
         job = client.copy_table(
-            full_table_id.replace(":","."),
-            dest_table.replace(":","."),
+            src_table,
+            dest_table,
             job_config=CopyJobConfig(create_disposition="CREATE_IF_NEEDED")
         )
         # job.result()
         jobs.append(job)
-        logger.info(f"= SINGLE TABLE SCHED {full_table_id} -> {dest_table}")
+        logger.info(f"= SINGLE TABLE SCHED {src_table} -> {dest_table}")
     run_commands_in_parallel(jobs, trigger_job)
 
 
 def list_not_tables(items):
     for item in items:
-        logger.info(f"Not a table: ", item)
+        logger.info(f"Not a table: {item}")
 
 
 def are_costs_clear(client, job_config, source, dest) -> bool:
@@ -119,30 +127,30 @@ def run(args):
 
     present_tables(client, job_config, args)
     tables, not_tables = get_tables(client, job_config, source)
-    copy_tables(client, tables, source, dest)
-
     clear_costs = are_costs_clear(client, job_config, source, dest)
     if not clear_costs:
         dest_tables, dest_not_tables = get_tables(client, job_config, dest)
-        logger.info(f"tables <source:{len(tables)}, dest:{len(dest_tables)}>, not_tables <source:{len(not_tables)}, dest:{len(dest_not_tables)}>")
-        diff = set(map(lambda x: x.split('.')[1], tables)).difference(map(lambda x: x.split('.')[1], dest_tables))
-        logger.info(f"Table that was not copied yet: {diff}")
+        logger.info(f"tables <source:{len(tables)}, dest:{len(dest_tables)}>, "
+                    f"not_tables <source:{len(not_tables)}, dest:{len(dest_not_tables)}>")
+        # compare table_id only
+        missing_tables_to_be_copied = set(map(lambda x: x.split('.')[1], tables)).difference(
+            map(lambda x: x.split('.')[1], dest_tables))
+        logger.info(f"Table that was not copied yet: {missing_tables_to_be_copied if len(missing_tables_to_be_copied) <= 20 else len(missing_tables_to_be_copied)}")
+        copy_tables(client, missing_tables_to_be_copied, source, dest)
 
     list_not_tables(not_tables)
     return 0
 
 
-
-
-
 def cli(args):
     parser = argparse.ArgumentParser(description='Copies the dataset from one project to another.')
-    parser.add_argument('-i','--source_dataset', help='Source dataset.', required=True, type=str)
-    parser.add_argument('-ip','--source_project', help='Source project.', default=WORLD_FISHING_827, type=str)
-    parser.add_argument('-o','--dest_dataset', help='Dest dataset.', required=True, type=str)
-    parser.add_argument('-op','--dest_project', help='Dest project.', default=GFW_INT_VMS_SOURCES, type=str)
+    parser.add_argument('-i', '--source_dataset', help='Source dataset.', required=True, type=str)
+    parser.add_argument('-ip', '--source_project', help='Source project.', default=WORLD_FISHING_827, type=str)
+    parser.add_argument('-o', '--dest_dataset', help='Dest dataset.', required=True, type=str)
+    parser.add_argument('-op', '--dest_project', help='Dest project.', default=GFW_INT_VMS_SOURCES, type=str)
     args = parser.parse_args()
     return run(args)
+
 
 def main():
     log_format = "%(levelname)s %(asctime)s - %(message)s"
@@ -157,7 +165,8 @@ def main():
     logger.info('Started')
     r = cli(sys.argv[1:])
     logger.info('Finished')
-    sys.exit(0)
+    sys.exit(r)
+
 
 if __name__ == "__main__":
     main()

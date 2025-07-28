@@ -5,7 +5,6 @@ services:
     volumes:
       - ".:/app"
       - "gcp:/root/.config/"
-    entrypoint: "python"
 
 # Volume to hold GCP authentication
 volumes:

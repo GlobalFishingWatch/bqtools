@@ -371,7 +371,7 @@ def run(
         part_tbl_updated = get_only_updated(partitioned_tables, dest_partitioned_tables)
         print("part_tbl_updated", part_tbl_updated)
         copy_tables(client, part_tbl_missing, source, dest, copy_job_config)
-        copy_tables(client, part_tbl_updated, source, dest, copy_job_config)
+        copy_tables(client, part_tbl_updated, source, dest, CopyJobConfig(write_disposition="WRITE_TRUNCATE"))
 
         # Views
         create_views(client, views, dest_views, dest)

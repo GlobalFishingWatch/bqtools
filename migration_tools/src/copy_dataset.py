@@ -18,7 +18,7 @@ from gfw.common.cli import Option, ParametrizedCommand
 from google.api_core.exceptions import Conflict
 from google.cloud import bigquery
 from google.cloud.bigquery.job import QueryJobConfig, CopyJobConfig
-from multiprocessing.pool import ThreadPool
+from .utils import run_jobs_in_parallel
 
 
 logger = logging.getLogger(__name__)
@@ -115,24 +115,6 @@ def get_tables(
                 f"Partitioned-Tables: {len(partitioned_table_result)}, "
                 f"Not-tables: {len(not_simple_table_result)}>")
     return simple_table_result, partitioned_table_result, not_simple_table_result
-
-
-def run_jobs_in_parallel(
-    jobs: typing.List,
-    callback: typing.Callable[[CopyJobConfig], None],
-    max_threads: int = 32
-):
-    """
-    Maps callback function of a job in a thread pool.
-
-    Args:
-        jobs: List of job ids.
-        callback: process that takes a CopyJobConfig as parameter.
-        max_threads: Max threads, deafault to 32."""
-    n_threads = min(max_threads, len(jobs))
-    pool = ThreadPool(n_threads)
-    pool.map(callback, jobs)
-    pool.close()
 
 
 def trigger_job(

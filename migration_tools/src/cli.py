@@ -1,6 +1,7 @@
 from gfw.common.cli import CLI, Option
 from gfw.common.logging import LoggerConfig
 from src.copy_dataset import copy_dataset_command
+from src.export_dataset import export_dataset_command
 import logging
 import sys
 
@@ -21,6 +22,7 @@ def cli(args):
         ],
         subcommands=[
             copy_dataset_command,
+            export_dataset_command,
         ],
         version='0.1.0',
         examples=[

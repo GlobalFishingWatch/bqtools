@@ -73,7 +73,7 @@ def extract_tables(
     gcs: storage.Client,
     tables: typing.List[typing.Tuple],
     source: bigquery.DatasetReference,
-    backet_name: str,
+    bucket_name: str,
     force: bool
 ):
     """
@@ -84,12 +84,12 @@ def extract_tables(
         gcs: storage client.
         tables: list of tables.
         source: dataset source.
-        backet_name: name of the backet.
+        bucket_name: name of the bucket.
         force: override upload."""
     for table in tables:
         table_name, schema, ddl = table
-        backet_path = f"{source.project}/{source.dataset_id}/{table_name}"
-        gcs_path = f"gs://{backet_name}/{backet_path}/table.AVRO"
+        bucket_path = f"{source.project}/{source.dataset_id}/{table_name}"
+        gcs_path = f"gs://{bucket_name}/{bucket_path}.avro"
         extract = client.extract_table(
             f"{source.project}.{source.dataset_id}.{table_name}",
             f"{gcs_path}",
@@ -100,9 +100,9 @@ def extract_tables(
                 use_avro_logical_types=True
             )
         )
-        logger.info(f"Table {table_name} extracted to {gcs_path}")
-        upload_blob(gcs, backet_name, json.dumps([x.to_api_repr() for x in schema]), f"{backet_path}/schema.sql", force)
-        upload_blob(gcs, backet_name, ddl, f"{source.project}/{source.dataset_id}/{table_name}/ddl.sql", force)
+        logger.info(f"Table {table_name} extracted to {gcs_path}.")
+        upload_blob(gcs, bucket_name, json.dumps([x.to_api_repr() for x in schema]), f"{bucket_path}/schema.sql", force)
+        upload_blob(gcs, bucket_name, ddl, f"{source.project}/{source.dataset_id}/{table_name}/ddl.sql", force)
 
 
 
@@ -130,8 +130,8 @@ def run(
     tables, views = get_tables(client, job_config, dataset_src)
 
     storage_client = storage.Client(project=args.source_project)
-    extract_tables(client, storage_client, tables, dataset_src, args.backet_name, args.force_override)
-    extract_tables(client, storage_client, views, dataset_src, args.backet_name, args.force_override)
+    extract_tables(client, storage_client, tables, dataset_src, args.bucket_name, args.force_override)
+    extract_tables(client, storage_client, views, dataset_src, args.bucket_name, args.force_override)
     return 0
 
 
@@ -141,7 +141,7 @@ export_dataset_command = ParametrizedCommand(
     options=[
         Option("-i", "--source_dataset", help="Source dataset.", required=True, type=str),
         Option("-ip", "--source_project", help="Source project.", required=True, type=str),
-        Option("-gcsb", "--backet_name", help="Dest backet.", required=True, type=str),
+        Option("-gcsb", "--bucket_name", help="Dest bucket.", required=True, type=str),
         Option("-force", "--force_override", help="Force the override of the files.", default=False, type=bool),
     ],
     run=lambda config, **kwargs: run(config)

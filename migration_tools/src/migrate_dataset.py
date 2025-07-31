@@ -5,7 +5,7 @@ Then it runs the copy in a separate project
 Then compares the amoun of Gb between the source and destination dataset.
 
 Usage:
-  python copy_dataset.py \
+  python migrate_dataset.py \
     --source_project "world-fishing-827" --source_dataset "VMS_Brazil"
     --dest_project "gfw-int-vms-sources" --dest_dataset "VMS_BRA"
 
@@ -32,7 +32,7 @@ PRESENT_TABLES_QUERY = """select if(regexp_contains(table_id, "{pattern}"),
 regexp_replace(table_id, "{pattern}", "*"), table_id) as table_name from
 `{args.source_dataset}.__TABLES__` group by 1"""
 
-JOB_PREFIX = "migrationtools_copy_dataset"
+JOB_PREFIX = "migrationtools_migrate_dataset"
 
 
 def get_costs(
@@ -131,7 +131,7 @@ def trigger_job(
         logger.warning(f"It already exists is ok. {conf}")
 
 
-def copy_tables(
+def migrate_tables(
     client: bigquery.Client,
     tables: typing.List[str],
     source: str,
@@ -227,7 +227,7 @@ def are_equal_size(
     logger.info(f"## Dataset: {dest}")
     dest_bytes = get_costs(client, job_config, dest)
     if src_bytes == dest_bytes:
-        logger.info(f"### COPY {source} -> {dest} COMPLETELY SUCCESS")
+        logger.info(f"### MIGRATION {source} -> {dest} COMPLETELY SUCCESS")
     else:
         logger.error(f"See differences in bytes {src_bytes-dest_bytes} ({(src_bytes-dest_bytes)/(1<<30)} GB)")
     return src_bytes == dest_bytes
@@ -308,10 +308,10 @@ def run(
     args: typing.List[str]
 ) -> int:
     """
-    Run the copy of tables from a source dataset to a destination dataset.
+    Run the migrate of tables from a source dataset to a destination dataset.
 
     Args:
-        args: The arguments to run the copy.
+        args: The arguments to run the migration.
 
     Returns:
         Number if the process ended well or not."""
@@ -346,22 +346,22 @@ def run(
 
         # Simple tables
         simple_tbl_missing = difference(table_name, simple_tables, dest_simple_tables)
-        copy_tables(client, simple_tbl_missing, source, dest, copy_job_config)
+        migrate_tables(client, simple_tbl_missing, source, dest, copy_job_config)
 
         # Partitioned tables
         part_tbl_missing = difference(lambda x: table_name(x[0]), partitioned_tables, dest_partitioned_tables)
         part_tbl_updated = get_only_updated(partitioned_tables, dest_partitioned_tables)
         print("part_tbl_updated", part_tbl_updated)
-        copy_tables(client, part_tbl_missing, source, dest, copy_job_config)
-        copy_tables(client, part_tbl_updated, source, dest, CopyJobConfig(write_disposition="WRITE_TRUNCATE"))
+        migrate_tables(client, part_tbl_missing, source, dest, copy_job_config)
+        migrate_tables(client, part_tbl_updated, source, dest, CopyJobConfig(write_disposition="WRITE_TRUNCATE"))
 
         # Views
         create_views(client, views, dest_views, dest)
     return 0
 
 
-copy_dataset_command = ParametrizedCommand(
-    name="copy_dataset",
+migrate_dataset_command = ParametrizedCommand(
+    name="migrate_dataset",
     description="Copies the dataset from one project to another.",
     options=[
         Option("-i", "--source_dataset", help="Source dataset.", required=True, type=str),

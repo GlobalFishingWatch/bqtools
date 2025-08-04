@@ -1,0 +1,13 @@
+migration_tools extract_dataset --source_project world-fishing-827 --source_dataset pipe_brazil_production_v20211126 --bucket_name gfw-int-vms-v2-5-backup
+migration_tools extract_dataset --source_project world-fishing-827 --source_dataset pipe_chile_production_v20211126 --bucket_name gfw-int-vms-v2-5-backup
+migration_tools extract_dataset --source_project world-fishing-827 --source_dataset pipe_costarica_production_v20211126 --bucket_name gfw-int-vms-v2-5-backup
+migration_tools extract_dataset --source_project world-fishing-827 --source_dataset pipe_costarica_production_v20211126 --bucket_name gfw-int-vms-v2-5-backup
+migration_tools extract_dataset --source_project world-fishing-827 --source_dataset pipe_ecuador_production_v20211126 --bucket_name gfw-int-vms-v2-5-backup
+migration_tools extract_dataset --source_project world-fishing-827 --source_dataset pipe_mexico_production_v20190912 --bucket_name gfw-int-vms-v2-5-backup
+migration_tools extract_dataset --source_project world-fishing-827 --source_dataset pipe_mhl_production_v20231110 --bucket_name gfw-int-vms-v2-5-backup
+migration_tools extract_dataset --source_project world-fishing-827 --source_dataset pipe_namibia_production_v20190207 --bucket_name gfw-int-vms-v2-5-backup
+migration_tools extract_dataset --source_project world-fishing-827 --source_dataset pipe_norway_production_v20220112 --bucket_name gfw-int-vms-v2-5-backup
+migration_tools extract_dataset --source_project world-fishing-827 --source_dataset pipe_panama_production_v20211126 --bucket_name gfw-int-vms-v2-5-backup
+migration_tools extract_dataset --source_project world-fishing-827 --source_dataset pipe_peru_production_v20211126 --bucket_name gfw-int-vms-v2-5-backup
+migration_tools extract_dataset --source_project world-fishing-827 --source_dataset pipe_png_production_v20230210 --bucket_name gfw-int-vms-v2-5-backup
+migration_tools extract_dataset --source_project world-fishing-827 --source_dataset pipe_viirs_production_v20220112 --bucket_name gfw-int-vms-v2-5-backup

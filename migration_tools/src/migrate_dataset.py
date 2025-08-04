@@ -326,7 +326,7 @@ def run(
         create_disposition="CREATE_IF_NEEDED",
         write_disposition="WRITE_EMPTY",
     )
-    if args.force_override:
+    if args.force_overwrite:
         copy_job_config = CopyJobConfig(
             create_disposition="CREATE_IF_NEEDED",
             write_disposition="WRITE_TRUNCATE",
@@ -351,7 +351,6 @@ def run(
         # Partitioned tables
         part_tbl_missing = difference(lambda x: table_name(x[0]), partitioned_tables, dest_partitioned_tables)
         part_tbl_updated = get_only_updated(partitioned_tables, dest_partitioned_tables)
-        print("part_tbl_updated", part_tbl_updated)
         migrate_tables(client, part_tbl_missing, source, dest, copy_job_config)
         migrate_tables(client, part_tbl_updated, source, dest, CopyJobConfig(write_disposition="WRITE_TRUNCATE"))
 
@@ -368,7 +367,7 @@ migrate_dataset_command = ParametrizedCommand(
         Option("-ip", "--source_project", help="Source project.", required=True, type=str),
         Option("-o", "--dest_dataset", help="Dest dataset.", required=True, type=str),
         Option("-op", "--dest_project", help="Dest project.", required=True, type=str),
-        Option("-force", "--force_override", help="Forces the override of all the VMS content.", default=False, type=bool),
+        Option("-force", "--force_overwrite", help="Forces the overwrite of all the VMS content.", default=False, type=bool),
     ],
     run=lambda config, **kwargs: run(config)
 )

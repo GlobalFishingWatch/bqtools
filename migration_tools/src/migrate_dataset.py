@@ -13,7 +13,6 @@ Usage:
 
 import logging
 import typing
-import re
 from gfw.common.cli import Option, ParametrizedCommand
 from google.api_core.exceptions import Conflict
 from google.cloud import bigquery
@@ -170,36 +169,28 @@ def migrate_tables(
     run_jobs_in_parallel(jobs, trigger_job)
 
 
-def create_views(
-    client: bigquery.Client,
+def list_views(
     src_views: typing.List[str],
-    dst_views: typing.List[str],
-    dst_dataset: str
+    source: str,
+    dest: str,
 ):
     """
-    Create the views in the destination dataset.
+    Lists the views.
 
     Args:
-        client: The bigquery Client.
         views: List of views to migrate.
+        source: source project.dataset.
+        dest: destination project.dataset.
     """
-    def split_parts(total: str) -> str:
-        return re.split(r"[:\.]", total)
-
-    dst_p, dst_d = split_parts(dst_dataset)
-    for view_fti in src_views:
-        src_p, src_d, src_t = split_parts(view_fti)
-        matched = list(filter(lambda x: x.split('.')[1] == src_t, dst_views))
-        if len(matched) == 0:
-            view = client.get_table(view_fti)
-            updated_query = view.view_query.replace(src_p, dst_p).replace(src_d, dst_d)
-            dst_view = bigquery.Table(f"{dst_dataset}.{src_t}")
-            dst_view.view_use_legacy_sql = view.view_use_legacy_sql
-            dst_view.view_query = updated_query
-            client.create_table(dst_views)
-            logger.info(f"New View: {dst_view.table_type}: {str(dst_view.reference)}")
-            logger.info(f"Original query: {view.view_query}\n\nUpdated query: {updated_query}")
-
+    src_proj, src_dataset = source.split('.')
+    dst_proj, dst_dataset = dest.split('.')
+    logger.info(
+        "These are the views, they can be exported running: \n$ migration_tools extract_dataset "
+        f"--log_file extract.log --source_project {src_proj} --source_dataset {src_dataset} "
+        f"--dest_project {dst_proj} --bucket_name {dst_dataset}"
+    )
+    for view in src_views:
+        logger.info(f"  - {view}")
 
 
 def are_equal_size(
@@ -229,7 +220,8 @@ def are_equal_size(
     if src_bytes == dest_bytes:
         logger.info(f"### MIGRATION {source} -> {dest} COMPLETELY SUCCESS")
     else:
-        logger.error(f"See differences in bytes {src_bytes-dest_bytes} ({(src_bytes-dest_bytes)/(1<<30)} GB)")
+        logger.error(f"See differences in bytes {src_bytes-dest_bytes} "
+                     f"({(src_bytes-dest_bytes)/(1<<30)} GB)")
     return src_bytes == dest_bytes
 
 
@@ -337,25 +329,31 @@ def run(
     present_tables(client, job_config, args)
     simple_tables, partitioned_tables, views = get_tables(client, job_config, source)
     if not are_equal_size(client, job_config, source, dest):
-        dest_simple_tables, dest_partitioned_tables, dest_views = get_tables(client, job_config, dest)
+        dsimple_tables, dpartitioned_tables, dviews = get_tables(client, job_config, dest)
         logger.info(
-            f"\nSimple-tables <{source}: {len(simple_tables)}, {dest}: {len(dest_simple_tables)}>, "
-            f"\nPartitioned-tables <{source}: {len(partitioned_tables)}, {dest}: {len(dest_partitioned_tables)}>, "
-            f"\nNot-tables <{source}: {len(views)}, {dest}: {len(dest_views)}>\n"
+            f"\nSimple-tables <{source}: {len(simple_tables)}, {dest}: {len(dsimple_tables)}>, "
+            f"\nPartitioned-tables <{source}: {len(partitioned_tables)},"
+            f" {dest}: {len(dpartitioned_tables)}>, "
+            f"\nNot-tables <{source}: {len(views)}, {dest}: {len(dviews)}>\n"
         )
 
         # Simple tables
-        simple_tbl_missing = difference(table_name, simple_tables, dest_simple_tables)
+        simple_tbl_missing = difference(table_name, simple_tables, dsimple_tables)
         migrate_tables(client, simple_tbl_missing, source, dest, copy_job_config)
 
         # Partitioned tables
-        part_tbl_missing = difference(lambda x: table_name(x[0]), partitioned_tables, dest_partitioned_tables)
-        part_tbl_updated = get_only_updated(partitioned_tables, dest_partitioned_tables)
+        part_tbl_missing = difference(
+            lambda x: table_name(x[0]),
+            partitioned_tables,
+            dpartitioned_tables
+        )
+        part_tbl_updated = get_only_updated(partitioned_tables, dpartitioned_tables)
         migrate_tables(client, part_tbl_missing, source, dest, copy_job_config)
-        migrate_tables(client, part_tbl_updated, source, dest, CopyJobConfig(write_disposition="WRITE_TRUNCATE"))
+        migrate_tables(client, part_tbl_updated, source, dest,
+                       CopyJobConfig(write_disposition="WRITE_TRUNCATE"))
 
         # Views
-        create_views(client, views, dest_views, dest)
+        list_views(views, source, dest)
     return 0
 
 
@@ -367,7 +365,7 @@ migrate_dataset_command = ParametrizedCommand(
         Option("-ip", "--source_project", help="Source project.", required=True, type=str),
         Option("-o", "--dest_dataset", help="Dest dataset.", required=True, type=str),
         Option("-op", "--dest_project", help="Dest project.", required=True, type=str),
-        Option("-force", "--force_overwrite", help="Forces the overwrite of all the VMS content.", default=False, type=bool),
+        Option("-force", "--force_overwrite", help="Overwrite content.", default=False, type=bool),
     ],
     run=lambda config, **kwargs: run(config)
 )

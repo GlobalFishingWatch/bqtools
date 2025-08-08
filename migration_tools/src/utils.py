@@ -1,6 +1,5 @@
 import typing
 from multiprocessing.pool import ThreadPool
-from google.cloud import bigquery
 
 
 def run_jobs_in_parallel(
@@ -18,6 +17,8 @@ def run_jobs_in_parallel(
         max_threads: Max threads, deafault to 32."""
     n_threads = min(max_threads, len(jobs))
     pool = ThreadPool(n_threads)
-    pool.map(lambda j: callback(j, **kw_args) if kw_args is not None else callback(j), jobs)
+    pool.map(
+        lambda j: callback(j, **kw_args) if kw_args is not None else callback(j),
+        jobs
+    )
     pool.close()
-

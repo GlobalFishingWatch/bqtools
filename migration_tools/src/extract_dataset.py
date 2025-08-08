@@ -265,7 +265,7 @@ def run(
             storage_client=storage_client,
             bucket_name=args.bucket_name,
             force_overwrite=args.force_overwrite,
-            table_type=args.table_type,
+            table_type=args.table_type.lower(),
         )
 
         tables = get_tables(client, storage_client, args.source_dataset, args.table_type)

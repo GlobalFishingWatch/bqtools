@@ -187,7 +187,7 @@ def list_views(
     logger.info(
         "These are the views, they can be exported running: \n$ migration_tools extract_dataset "
         f"--log_file extract.log --source_project {src_proj} --source_dataset {src_dataset} "
-        f"--dest_project {dst_proj} --bucket_name {dst_dataset}"
+        f"--dest_project {dst_proj} --bucket_name {dst_dataset} --table_type VIEW"
     )
     for view in src_views:
         logger.info(f"  - {view}")

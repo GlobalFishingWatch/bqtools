@@ -12,6 +12,3 @@ migration_tools extract_dataset --source_project world-fishing-827 --log_file pe
 migration_tools extract_dataset --source_project world-fishing-827 --log_file png.log --source_dataset pipe_png_production_v20230210 --dest_project gfw-int-vms-v2-5-backup --bucket_name gfw-int-vms-v2-5-backup
 migration_tools extract_dataset --source_project world-fishing-827 --log_file viirs.log --source_dataset pipe_viirs_production_v20220112 --dest_project gfw-int-vms-v2-5-backup --bucket_name gfw-int-vms-v2-5-backup
 
-
-
-

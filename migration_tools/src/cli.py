@@ -1,6 +1,7 @@
 from gfw.common.cli import CLI, Option
 from src.migrate_dataset import migrate_dataset_command
 from src.extract_dataset import extract_dataset_command
+from src.list_views_in_dataset import list_views_in_dataset_command
 import logging
 import sys
 
@@ -22,6 +23,7 @@ def cli(args):
         subcommands=[
             migrate_dataset_command,
             extract_dataset_command,
+            list_views_in_dataset_command,
         ],
         version='0.1.0',
         examples=[

@@ -188,7 +188,32 @@ def trigger_job(
     try:
         job.result()
     except BadRequest as err:
-        logger.error(f"Extract table {job.source} failed due to {err}")
+        # Check if alredy stored in GCS if not extract in multi parts.
+        gcs_path = job.destination_uris[0]
+        bucket, blob = re.search("gs://([^/]*)/(.*)", gcs_path).group(1, 2)
+        storage_client = storage.Client(project=bucket)
+        stored = list(
+            storage_client.list_blobs(
+                storage_client.project,
+                match_glob=f"{blob}/part_*.avro"
+            )
+        )
+        if len(stored) == 0:
+            logger.error(f"Extract table {job.source} failed due to {err}")
+            bq_client = bigquery.Client(project=job.project)
+            new_job = bq_client.extract_table(
+                job.source,
+                f"{gcs_path}/part_*.avro",
+                location=job.location,
+                job_id_prefix=JOB_PREFIX,
+                job_config=EXTRACT_JOB_CONFIG,
+            )
+            new_job.result()
+            logger.info(f"Extract table {job.source} in several files {gcs_path}/part_*.avro")
+        else:
+            logger.info(f"Table {job.source} ALREADY EXISTS in several files {gcs_path}/part_*.avro")
+
+
 
 
 def upload_schema(

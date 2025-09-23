@@ -1,0 +1,12 @@
+services:
+  dev:
+    image: gfw/bqtools
+    build: .
+    volumes:
+      - ".:/app"
+      - "gcp:/root/.config/"
+
+# Volume to hold GCP authentication
+volumes:
+  gcp:
+    external: true

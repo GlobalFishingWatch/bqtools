@@ -166,7 +166,8 @@ def migrate_tables(
         except Conflict as conf:
             logger.warning(f"Job id already exists is ok. {conf}")
 
-    run_jobs_in_parallel(jobs, trigger_job)
+    if len(jobs) > 0:
+        run_jobs_in_parallel(jobs, trigger_job)
 
 
 def list_views(
